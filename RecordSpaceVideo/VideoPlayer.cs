@@ -331,7 +331,7 @@ namespace SpaceVideo
             GUILayout.Label("");
 
             var strings_list = new List<string>();
-            foreach (var fullname in System.IO.Directory.GetFiles(VideoRecorderEditor.GetLocationsPath(), "*.video"))
+            foreach (var fullname in System.IO.Directory.GetFiles(VideoRecorder.GetLocationsPath(), "*.video"))
             {
                 var fn = System.IO.Path.GetFileName(fullname);
                 strings_list.Add(fn);
@@ -346,7 +346,7 @@ namespace SpaceVideo
             }
 
             if (GUILayout.Button("Play"))
-                StartPlaying(VideoRecorderEditor.GetLocationsPath() + "/" + strings_list[selected_file_number]);
+                StartPlaying(VideoRecorder.GetLocationsPath() + "/" + strings_list[selected_file_number]);
         }
 
         void StartPlaying(string filename)

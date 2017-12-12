@@ -25,6 +25,8 @@ namespace SpaceVideo
 
         public float recordFrequency = 20f;
         public string[] excludeTags;
+        private string lastLabel = null;
+        public int labelCounter = 0;
 
         List<VideoFrame> rec_frames;
         Dictionary<GameObject, int> rec_vgo_mapping;
@@ -219,7 +221,7 @@ namespace SpaceVideo
             StartCoroutine(FramesRecorder());
         }
 
-        public Video StopRecording()
+        public Video StopRecordingVideo()
         {
             var result = new Video
             {
@@ -286,43 +288,28 @@ namespace SpaceVideo
                 if (GUI.Button(new Rect(10, 10, 150, 30), "Start recording"))
                 {
                     state = State.RECORDING;
+                    lastLabel = null;
+                    StartRecording();
                 }
             }
             else
             {
                 if (GUI.Button(new Rect(10, 10, 150, 30), "Stop recording"))
                 {
+                    labelCounter = 0;
                     state = State.NOT_RECORDING;
+                    StopRecording();
                 }
             }
-        }
-    }
-
-
-#if UNITY_EDITOR
-    [CustomEditor(typeof(VideoRecorder))]
-    public class VideoRecorderEditor : Editor
-    {
-        public override void OnInspectorGUI()
-        {
-            DrawDefaultInspector();
-            GUILayout.Label("");
-
-            if (!Application.isPlaying)
+            if (lastLabel != null)
             {
-                GUILayout.Label("Video recording is only available in Play mode.");
-                return;
+                labelCounter++;
+                GUI.Box(new Rect(Screen.width / 2 - 300, Screen.height / 2 - 15, 600, 30), lastLabel);
+                if (labelCounter > 500)
+                {
+                    lastLabel = null;
+                }
             }
-            if (GUILayout.Button("Start recording"))
-                StartRecording();
-            if (GUILayout.Button("Stop recording"))
-                StopRecording();
-        }
-
-        void StartRecording()
-        {
-            var vr = target as VideoRecorder;
-            vr.StartRecording();
         }
 
         public static string GetLocationsPath()
@@ -332,9 +319,8 @@ namespace SpaceVideo
 
         void StopRecording()
         {
-            var vr = target as VideoRecorder;
-            var msg = vr.StopRecording();
-
+            var msg = StopRecordingVideo();
+            
             int n = 1;
             string filename;
             while (true)
@@ -354,7 +340,7 @@ namespace SpaceVideo
             {
                 fs.Close();
             }
-            EditorUtility.DisplayDialog("Video capture", "File created: " + filename, "Ok");
+            lastLabel = "File created: " + filename;
             AssetDatabase.Refresh();
         }
 
@@ -435,8 +421,7 @@ namespace SpaceVideo
                 return;
             }
         }
-}
-#endif
+    }
 
 
     public static class MyListExtension
