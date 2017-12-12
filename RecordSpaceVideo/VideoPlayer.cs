@@ -18,11 +18,12 @@ namespace SpaceVideo
         public Material otherControllersMaterial;
         public Transform baseActor;
 
-        struct Actor { internal int vgo_index; internal Transform tr; }
+        class Actor { internal int vgo_index; internal Transform tr; }
 
         Video video;
         List<Actor> actors;
         float start_time, next_time;
+        int previous_frame_index;
         Material[] materials;
         Mesh[] meshes;
         SteamVR_RenderModel[] head_ctrls;
@@ -52,6 +53,7 @@ namespace SpaceVideo
             video = new_video;
             start_time = Time.unscaledTime;
             next_time = start_time;
+            previous_frame_index = 0;
 
             LoadVideo();
         }
@@ -175,15 +177,19 @@ namespace SpaceVideo
                 return;
             }
 
+            while (previous_frame_index < frame_index)
+            {
+                VideoFrame finished_frame = video.frames[++previous_frame_index];
+                if (finished_frame.destroy_meshes != null)
+                    foreach (var mesh_id in finished_frame.destroy_meshes)
+                    {
+                        DestroyImmediate(meshes[mesh_id]);
+                        meshes[mesh_id] = null;
+                    }
+            }
+
             VideoFrame frame = video.frames[frame_index];
             next_time = start_time + (frame_index + 1) * video.time_step;
-
-            if (frame.destroy_meshes != null)
-                foreach (var mesh_id in frame.destroy_meshes)
-                {
-                    DestroyImmediate(meshes[mesh_id]);
-                    meshes[mesh_id] = null;
-                }
 
             while (actors.Count < frame.go.Length)
                 actors.Add(new Actor { vgo_index = -1, tr = Instantiate(baseActor, this.transform) });
