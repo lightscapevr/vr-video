@@ -144,6 +144,7 @@ namespace SpaceVideo
                         calculateBounds: false);
                 }
                 mesh.RecalculateBounds();
+                meshes[index] = mesh;
             }
             return mesh;
         }
