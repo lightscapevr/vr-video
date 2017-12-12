@@ -21,12 +21,12 @@ namespace SpaceVideo
             NOT_RECORDING
         }
 
-        public State state = State.NOT_RECORDING;
+        private State state = State.NOT_RECORDING;
 
         public float recordFrequency = 20f;
         public string[] excludeTags;
         private string lastLabel = null;
-        public int labelCounter = 0;
+        private int labelCounter = 0;
 
         List<VideoFrame> rec_frames;
         Dictionary<GameObject, int> rec_vgo_mapping;
@@ -75,6 +75,8 @@ namespace SpaceVideo
         int GetOrRecordMesh(Mesh mesh)
         {
             int result;
+            if (mesh == null)
+                return -1;
             if (!meshes_id.TryGetValue(mesh, out result))
             {
                 result = rec_meshes.Count;
@@ -106,7 +108,14 @@ namespace SpaceVideo
             {
                 result = rec_materials.Count;
 
-                Color col = mat.color;
+                Color col;
+                if (mat.HasProperty("_Color"))
+                {
+                    col = mat.color;
+                } else
+                {
+                    col = new Color(1, 1, 1); // make all the strange shaders white
+                }
                 rec_materials.Add(new VideoMaterial
                 {
                     color = new float[] { col.r, col.g, col.b, col.a },
@@ -128,6 +137,8 @@ namespace SpaceVideo
 
             var tr = FlattenTransform(go.transform);
             var mesh = GetOrRecordMesh(filt.sharedMesh);
+            if (mesh == -1)
+                return; // empty mesh
             var rend_mats = rend.sharedMaterials;
             var mats = new int[rend_mats.Length];
             for (int i = 0; i < mats.Length; i++)
