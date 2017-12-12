@@ -18,11 +18,9 @@ namespace SpaceVideo
         public Material otherControllersMaterial;
         public Transform baseActor;
 
-        struct Actor { internal int vgo_index; internal Transform tr; }
-
         Video video;
-        List<Actor> actors;
-        float start_time, next_time;
+        float start_time;
+        int previous_frame_index;
         Material[] materials;
         Mesh[] meshes;
         SteamVR_RenderModel[] head_ctrls;
@@ -51,14 +49,13 @@ namespace SpaceVideo
 
             video = new_video;
             start_time = Time.unscaledTime;
-            next_time = start_time;
+            previous_frame_index = 0;
 
             LoadVideo();
         }
 
         void LoadVideo()
         {
-            actors = new List<Actor>();
             materials = new Material[video.materials.Length];
             meshes = new Mesh[video.meshes.Length];
 
@@ -79,11 +76,6 @@ namespace SpaceVideo
 
         void UnloadVideo()
         {
-            if (actors != null)
-                foreach (var actor in actors)
-                    DestroyImmediate(actor.tr.gameObject);
-            actors = null;
-
             if (materials != null)
                 foreach (var mat in materials)
                     if (mat != null)
@@ -158,9 +150,6 @@ namespace SpaceVideo
 
         private void Update()
         {
-            if (Time.unscaledTime < next_time)
-                return;
-
             if (video == null)
             {
                 UnloadVideo();
@@ -174,41 +163,38 @@ namespace SpaceVideo
                 return;
             }
 
+            while (previous_frame_index < frame_index)
+            {
+                VideoFrame finished_frame = video.frames[++previous_frame_index];
+                if (finished_frame.destroy_meshes != null)
+                    foreach (var mesh_id in finished_frame.destroy_meshes)
+                    {
+                        DestroyImmediate(meshes[mesh_id]);
+                        meshes[mesh_id] = null;
+                    }
+            }
+
             VideoFrame frame = video.frames[frame_index];
-            next_time = start_time + (frame_index + 1) * video.time_step;
+            Matrix4x4 matrix = Matrix4x4.identity;
 
-            if (frame.destroy_meshes != null)
-                foreach (var mesh_id in frame.destroy_meshes)
-                {
-                    DestroyImmediate(meshes[mesh_id]);
-                    meshes[mesh_id] = null;
-                }
-
-            while (actors.Count < frame.go.Length)
-                actors.Add(new Actor { vgo_index = -1, tr = Instantiate(baseActor, this.transform) });
-
-            while (actors.Count > frame.go.Length)
-                DestroyImmediate(actors.Pop().tr.gameObject);
-
-            int j = 0;
             foreach (var vgo_index in frame.go)
             {
-                var actor = actors[j++];
-                if (actor.vgo_index == vgo_index)
-                    continue;     /* no updates here */
-
-                Transform tr = actor.tr;
                 VideoGameObject vgo = video.gameobjects[vgo_index];
 
-                ExpandToTransform(tr, vgo.tr);
-                tr.GetComponent<MeshFilter>().sharedMesh = LoadMesh(vgo.mesh);
+                float[] source = vgo.tr;
+                Vector3 pos = new Vector3(source[0], source[1], source[2]);
+                Quaternion q = new Quaternion(source[3], source[4], source[5], source[6]);
+                Vector3 s = new Vector3(source[7], source[8], source[9]);
+                matrix.SetTRS(pos, q, s);
+                /* XXX should multiply with the transform's matrix, maybe */
 
-                Material[] mat = new Material[vgo.mats.Length];
-                for (int i = 0; i < mat.Length; i++)
-                    mat[i] = LoadMaterial(vgo.mats[i]);
-                tr.GetComponent<MeshRenderer>().sharedMaterials = mat;
+                var mesh = LoadMesh(vgo.mesh);
 
-                actor.vgo_index = vgo_index;
+                for (var j = 0; j < vgo.mats.Length; j++)
+                {
+                    Material mat = LoadMaterial(vgo.mats[j]);
+                    Graphics.DrawMesh(mesh, matrix, mat, layer: 0, camera: null, submeshIndex: j);
+                }
             }
 
             foreach (var ctrl in BaroqueUI.Baroque.GetControllers())
