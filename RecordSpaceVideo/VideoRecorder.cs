@@ -15,6 +15,14 @@ namespace SpaceVideo
 {
     public class VideoRecorder : MonoBehaviour
     {
+        public enum State
+        {
+            RECORDING,
+            NOT_RECORDING
+        }
+
+        public State state = State.NOT_RECORDING;
+
         public float recordFrequency = 20f;
         public string[] excludeTags;
 
@@ -268,6 +276,24 @@ namespace SpaceVideo
             {
                 rec_destroy_meshes.Add(mesh_id);
                 meshes_id.Remove(mesh);
+            }
+        }
+
+        private void OnGUI()
+        {
+            if (state == State.NOT_RECORDING)
+            {
+                if (GUI.Button(new Rect(10, 10, 150, 30), "Start recording"))
+                {
+                    state = State.RECORDING;
+                }
+            }
+            else
+            {
+                if (GUI.Button(new Rect(10, 10, 150, 30), "Stop recording"))
+                {
+                    state = State.NOT_RECORDING;
+                }
             }
         }
     }
